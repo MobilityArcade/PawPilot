@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PawPilot</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+  <style>
+    body {
+      background: black;
+      color: white;
+      font-family: Arial;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .camera-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      margin: auto;
+    }
+
+    video, canvas {
+      width: 100%;
+      border-radius: 10px;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    #coachOverlay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      background: rgba(0,0,0,0.6);
+      border-radius: 8px;
+    }
+
+    #status {
+      margin-top: 420px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>🐾 PawPilot</h1>
+  <p>Real-Time Dog Training Coach</p>
+
+  <div class="camera-container">
+    <video id="camera" autoplay playsinline></video>
+    <canvas id="overlay"></canvas>
+    <div id="coachOverlay">Starting...</div>
+  </div>
+
+  <p id="status">Loading AI...</p>
+
+  <script>
+    const video = document.getElementById("camera");
+    const canvas = document.getElementById("overlay");
+    const ctx = canvas.getContext("2d");
+
+    const coachOverlay = document.getElementById("coachOverlay");
+    const statusText = document.getElementById("status");
+
+    let model;
+    let lastSpoken = "";
+    let voiceReady = false;
+
+    // 🔊 enable voice
+    document.body.addEventListener("click", () => {
+      const u = new SpeechSynthesisUtterance("");
+      speechSynthesis.speak(u);
+      speechSynthesis.cancel();
+      voiceReady = true;
+    }, { once: true });
+
+    function speak(text) {
+      if (!voiceReady) return;
+      if (text === lastSpoken) return;
+
+      lastSpoken = text;
+
+      speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      speechSynthesis.speak(utter);
+    }
+
+    // 🎥 camera
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+      });
+
+    // 🧠 load model
+    cocoSsd.load().then(m => {
+      model = m;
+      statusText.innerText = "AI Ready";
+      detect();
+    });
+
+    async function detect() {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      const predictions = await model.detect(video);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      let dog = null;
+      let person = null;
+
+      predictions.forEach(p => {
+        if (p.score > 0.6) {
+          if (p.class === "dog") dog = p.bbox;
+          if (p.class === "person") person = p.bbox;
+        }
+      });
+
+      if (dog && person) {
+        const distance = Math.abs(dog[0] - person[0]);
+
+        if (distance > 150) {
+          coachOverlay.innerText = "🛑 STOP";
+          coachOverlay.style.color = "red";
+          speak("Stop");
+        } else if (distance > 70) {
+          coachOverlay.innerText = "⚠️ Slow";
+          coachOverlay.style.color = "orange";
+          speak("Slow down");
+        } else {
+          coachOverlay.innerText = "✅ Good";
+          coachOverlay.style.color = "lime";
+          speak("Good, reward");
+        }
+      } else {
+        coachOverlay.innerText = "👀 Find your dog";
+        coachOverlay.style.color = "white";
+      }
+
+      requestAnimationFrame(detect);
+    }
+  </script>
+
+</body>
+</html>
