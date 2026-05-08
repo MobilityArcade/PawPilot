@@ -3,7 +3,6 @@
 <head>
   <title>PawPilot</title>
 
-  <!-- TensorFlow + COCO SSD -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
 
@@ -17,15 +16,7 @@
       margin: 0;
     }
 
-    h1 {
-      margin-top: 20px;
-      font-size: 42px;
-    }
-
-    p {
-      color: #ccc;
-      margin-bottom: 20px;
-    }
+    h1 { margin-top: 20px; font-size: 42px; }
 
     .camera-container {
       position: relative;
@@ -34,8 +25,7 @@
       margin: auto;
     }
 
-    video,
-    canvas {
+    video, canvas {
       width: 100%;
       border-radius: 14px;
       position: absolute;
@@ -48,9 +38,7 @@
       z-index: 1;
     }
 
-    canvas {
-      z-index: 2;
-    }
+    canvas { z-index: 2; }
 
     #coachOverlay {
       position: absolute;
@@ -64,10 +52,7 @@
       z-index: 3;
     }
 
-    #status {
-      margin-top: 460px;
-      font-size: 18px;
-    }
+    #status { margin-top: 20px; font-size: 18px; }
 
     .pill {
       display: inline-block;
@@ -77,6 +62,17 @@
       padding: 8px 14px;
       border-radius: 999px;
       margin-right: 8px;
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 12px 18px;
+      border: none;
+      border-radius: 10px;
+      background: gold;
+      color: black;
+      font-weight: bold;
+      font-size: 16px;
     }
   </style>
 </head>
@@ -89,34 +85,34 @@
   <div class="camera-container">
     <video id="camera" autoplay playsinline muted></video>
     <canvas id="overlay"></canvas>
-
-    <div id="coachOverlay">
-      Starting...
-    </div>
+    <div id="coachOverlay">Starting...</div>
   </div>
+
+  <button onclick="switchCamera()">🔄 Switch Camera</button>
 
   <div id="status">Loading...</div>
 
   <div>
+    <span class="pill">Camera: <span id="cameraMode">Back</span></span>
     <span class="pill">Dog: <span id="dogStatus">No</span></span>
     <span class="pill">Person: <span id="personStatus">No</span></span>
   </div>
 
   <script>
-
     const video = document.getElementById("camera");
     const canvas = document.getElementById("overlay");
     const ctx = canvas.getContext("2d");
 
     const coachOverlay = document.getElementById("coachOverlay");
     const statusText = document.getElementById("status");
-
     const dogStatus = document.getElementById("dogStatus");
     const personStatus = document.getElementById("personStatus");
+    const cameraModeText = document.getElementById("cameraMode");
 
     let model;
+    let currentStream = null;
+    let currentFacingMode = "environment";
 
-    // 🔊 Voice
     let voiceReady = false;
     let lastSpoken = "";
 
@@ -128,13 +124,10 @@
     }, { once: true });
 
     function speak(text) {
-
       if (!voiceReady) return;
-
       if (text === lastSpoken) return;
 
       lastSpoken = text;
-
       speechSynthesis.cancel();
 
       const utter = new SpeechSynthesisUtterance(text);
@@ -144,49 +137,58 @@
       speechSynthesis.speak(utter);
     }
 
-    // 🎥 CAMERA
     async function startCamera() {
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "environment"
-        },
-        audio: false
-      });
-
-      video.srcObject = stream;
-
-      return new Promise(resolve => {
-
-        video.onloadedmetadata = () => {
-          video.play();
-          resolve();
-        };
-
-      });
-    }
-
-    // 🧠 INIT
-    async function init() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
 
       statusText.innerText = "Starting Camera...";
 
+      try {
+        currentStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: currentFacingMode },
+          audio: false
+        });
+
+        video.srcObject = currentStream;
+
+        cameraModeText.innerText =
+          currentFacingMode === "environment" ? "Back" : "Front";
+
+        return new Promise(resolve => {
+          video.onloadedmetadata = () => {
+            video.play();
+            resolve();
+          };
+        });
+
+      } catch (err) {
+        console.error("Camera error:", err);
+        statusText.innerText = "Camera error. Try switching camera.";
+      }
+    }
+
+    async function switchCamera() {
+      currentFacingMode =
+        currentFacingMode === "environment" ? "user" : "environment";
+
+      coachOverlay.innerText = "Switching camera...";
+      coachOverlay.style.color = "white";
+      await startCamera();
+    }
+
+    async function init() {
       await startCamera();
 
       statusText.innerText = "Loading AI Model...";
-
       model = await cocoSsd.load();
 
       statusText.innerText = "AI Ready";
-
       detect();
-
     }
 
-    // 🔍 DETECTION LOOP
     async function detect() {
-
-      if (!model) {
+      if (!model || video.readyState < 2) {
         requestAnimationFrame(detect);
         return;
       }
@@ -202,82 +204,54 @@
       let person = null;
 
       predictions.forEach(prediction => {
-
         if (prediction.score > 0.55) {
-
           const [x, y, w, h] = prediction.bbox;
 
-          // BOX
           ctx.strokeStyle = "lime";
           ctx.lineWidth = 3;
           ctx.strokeRect(x, y, w, h);
 
-          // LABEL
           ctx.fillStyle = "lime";
           ctx.font = "18px Arial";
-          ctx.fillText(prediction.class, x, y - 8);
+          ctx.fillText(prediction.class, x, y > 15 ? y - 8 : 20);
 
-          if (prediction.class === "dog") {
-            dog = prediction.bbox;
-          }
-
-          if (prediction.class === "person") {
-            person = prediction.bbox;
-          }
+          if (prediction.class === "dog") dog = prediction.bbox;
+          if (prediction.class === "person") person = prediction.bbox;
         }
-
       });
 
-      // UI STATUS
       dogStatus.innerText = dog ? "YES" : "NO";
       personStatus.innerText = person ? "YES" : "NO";
 
-      // 🎯 COACHING
       if (dog && person) {
-
         const distance = Math.abs(dog[0] - person[0]);
 
         if (distance > 150) {
-
           coachOverlay.innerText = "🛑 STOP";
           coachOverlay.style.color = "red";
-
           speak("Stop");
-
         } else if (distance > 70) {
-
           coachOverlay.innerText = "⚠️ Slow";
           coachOverlay.style.color = "orange";
-
           speak("Slow down");
-
         } else {
-
           coachOverlay.innerText = "✅ Good";
           coachOverlay.style.color = "lime";
-
           speak("Good");
-
         }
 
       } else if (dog) {
-
         coachOverlay.innerText = "🐶 Dog detected";
         coachOverlay.style.color = "cyan";
-
       } else {
-
         coachOverlay.innerText = "👀 Looking for dog";
         coachOverlay.style.color = "white";
-
       }
 
       requestAnimationFrame(detect);
-
     }
 
     init();
-
   </script>
 
 </body>
