@@ -10,13 +10,36 @@
     body {
       background: black;
       color: white;
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       text-align: center;
       padding: 20px;
       margin: 0;
     }
 
-    h1 { margin-top: 20px; font-size: 42px; }
+    h1 {
+      margin-top: 20px;
+      font-size: 44px;
+    }
+
+    .subtitle {
+      color: #ccc;
+      margin-bottom: 18px;
+      font-size: 18px;
+    }
+
+    .mode-box {
+      margin: 10px auto 20px;
+    }
+
+    select {
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      font-weight: bold;
+      background: gold;
+      color: black;
+    }
 
     .camera-container {
       position: relative;
@@ -25,9 +48,10 @@
       margin: auto;
     }
 
-    video, canvas {
+    video,
+    canvas {
       width: 100%;
-      border-radius: 14px;
+      border-radius: 16px;
       position: absolute;
       top: 0;
       left: 0;
@@ -38,41 +62,56 @@
       z-index: 1;
     }
 
-    canvas { z-index: 2; }
+    canvas {
+      z-index: 2;
+    }
 
     #coachOverlay {
       position: absolute;
       top: 12px;
       left: 12px;
-      padding: 10px 14px;
-      border-radius: 10px;
-      font-size: 20px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 24px;
       font-weight: bold;
-      background: rgba(0,0,0,0.65);
+      background: rgba(0, 0, 0, 0.7);
       z-index: 3;
     }
 
-    #status { margin-top: 20px; font-size: 18px; }
+    button {
+      margin-top: 18px;
+      padding: 14px 22px;
+      border: none;
+      border-radius: 12px;
+      background: gold;
+      color: black;
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    #status {
+      margin-top: 18px;
+      font-size: 18px;
+    }
 
     .pill {
       display: inline-block;
       margin-top: 12px;
       background: #1e1e1e;
       border: 1px solid #333;
-      padding: 8px 14px;
+      padding: 9px 14px;
       border-radius: 999px;
-      margin-right: 8px;
+      margin-right: 6px;
+      margin-left: 6px;
+      font-size: 15px;
     }
 
-    button {
-      margin-top: 15px;
-      padding: 12px 18px;
-      border: none;
-      border-radius: 10px;
-      background: gold;
-      color: black;
-      font-weight: bold;
-      font-size: 16px;
+    #modeHint {
+      color: #aaa;
+      max-width: 420px;
+      margin: 14px auto 0;
+      line-height: 1.4;
+      font-size: 15px;
     }
   </style>
 </head>
@@ -80,7 +119,16 @@
 <body>
 
   <h1>🐾 PawPilot</h1>
-  <p>Real-Time Dog Training Coach</p>
+  <div class="subtitle">Real-Time Dog Training Coach</div>
+
+  <div class="mode-box">
+    <select id="trainingMode" onchange="changeMode()">
+      <option value="looseLeash">Loose Leash Walking</option>
+      <option value="heel">Heel Training</option>
+      <option value="stay">Stay / Wait</option>
+      <option value="focus">Focus</option>
+    </select>
+  </div>
 
   <div class="camera-container">
     <video id="camera" autoplay playsinline muted></video>
@@ -94,8 +142,12 @@
 
   <div>
     <span class="pill">Camera: <span id="cameraMode">Back</span></span>
-    <span class="pill">Dog: <span id="dogStatus">No</span></span>
-    <span class="pill">Person: <span id="personStatus">No</span></span>
+    <span class="pill">Dog: <span id="dogStatus">NO</span></span>
+    <span class="pill">Person: <span id="personStatus">NO</span></span>
+  </div>
+
+  <div id="modeHint">
+    Mode: Loose leash. PawPilot says “Good” when the dog stays close and “Stop” when the dog pulls too far ahead.
   </div>
 
   <script>
@@ -108,6 +160,8 @@
     const dogStatus = document.getElementById("dogStatus");
     const personStatus = document.getElementById("personStatus");
     const cameraModeText = document.getElementById("cameraMode");
+    const trainingModeSelect = document.getElementById("trainingMode");
+    const modeHint = document.getElementById("modeHint");
 
     let model;
     let currentStream = null;
@@ -115,6 +169,7 @@
 
     let voiceReady = false;
     let lastSpoken = "";
+    let currentCue = "";
 
     document.body.addEventListener("click", () => {
       const unlock = new SpeechSynthesisUtterance("");
@@ -133,8 +188,17 @@
       const utter = new SpeechSynthesisUtterance(text);
       utter.rate = 1;
       utter.pitch = 1;
-
       speechSynthesis.speak(utter);
+    }
+
+    function setCue(text, color, spokenText) {
+      coachOverlay.innerText = text;
+      coachOverlay.style.color = color;
+
+      if (spokenText && spokenText !== currentCue) {
+        currentCue = spokenText;
+        speak(spokenText);
+      }
     }
 
     async function startCamera() {
@@ -161,7 +225,6 @@
             resolve();
           };
         });
-
       } catch (err) {
         console.error("Camera error:", err);
         statusText.innerText = "Camera error. Try switching camera.";
@@ -172,9 +235,35 @@
       currentFacingMode =
         currentFacingMode === "environment" ? "user" : "environment";
 
-      coachOverlay.innerText = "Switching camera...";
-      coachOverlay.style.color = "white";
+      setCue("Switching camera...", "white", "");
       await startCamera();
+    }
+
+    function changeMode() {
+      lastSpoken = "";
+      currentCue = "";
+
+      const mode = trainingModeSelect.value;
+
+      if (mode === "looseLeash") {
+        modeHint.innerText =
+          "Mode: Loose leash. PawPilot says “Good” when the dog stays close and “Stop” when the dog pulls too far ahead.";
+      }
+
+      if (mode === "heel") {
+        modeHint.innerText =
+          "Mode: Heel training. PawPilot says “Good” when the dog stays close to the handler. Use this for walking beside you.";
+      }
+
+      if (mode === "stay") {
+        modeHint.innerText =
+          "Mode: Stay / Wait. PawPilot watches whether the dog stays mostly still. This is an early MVP version.";
+      }
+
+      if (mode === "focus") {
+        modeHint.innerText =
+          "Mode: Focus. PawPilot rewards calm closeness and attention. This is an early MVP version.";
+      }
     }
 
     async function init() {
@@ -207,13 +296,15 @@
         if (prediction.score > 0.55) {
           const [x, y, w, h] = prediction.bbox;
 
-          ctx.strokeStyle = "lime";
-          ctx.lineWidth = 3;
-          ctx.strokeRect(x, y, w, h);
+          if (prediction.class === "dog" || prediction.class === "person") {
+            ctx.strokeStyle = prediction.class === "dog" ? "lime" : "#00ffff";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x, y, w, h);
 
-          ctx.fillStyle = "lime";
-          ctx.font = "18px Arial";
-          ctx.fillText(prediction.class, x, y > 15 ? y - 8 : 20);
+            ctx.fillStyle = prediction.class === "dog" ? "lime" : "#00ffff";
+            ctx.font = "18px Arial";
+            ctx.fillText(prediction.class, x, y > 15 ? y - 8 : 20);
+          }
 
           if (prediction.class === "dog") dog = prediction.bbox;
           if (prediction.class === "person") person = prediction.bbox;
@@ -223,32 +314,95 @@
       dogStatus.innerText = dog ? "YES" : "NO";
       personStatus.innerText = person ? "YES" : "NO";
 
-      if (dog && person) {
-        const distance = Math.abs(dog[0] - person[0]);
+      const mode = trainingModeSelect.value;
 
-        if (distance > 150) {
-          coachOverlay.innerText = "🛑 STOP";
-          coachOverlay.style.color = "red";
-          speak("Stop");
-        } else if (distance > 70) {
-          coachOverlay.innerText = "⚠️ Slow";
-          coachOverlay.style.color = "orange";
-          speak("Slow down");
-        } else {
-          coachOverlay.innerText = "✅ Good";
-          coachOverlay.style.color = "lime";
-          speak("Good");
-        }
-
-      } else if (dog) {
-        coachOverlay.innerText = "🐶 Dog detected";
-        coachOverlay.style.color = "cyan";
-      } else {
-        coachOverlay.innerText = "👀 Looking for dog";
-        coachOverlay.style.color = "white";
+      if (!dog) {
+        setCue("👀 Looking for dog", "white", "Find your dog");
+      } else if (mode === "looseLeash") {
+        looseLeashLogic(dog, person);
+      } else if (mode === "heel") {
+        heelLogic(dog, person);
+      } else if (mode === "stay") {
+        stayLogic(dog);
+      } else if (mode === "focus") {
+        focusLogic(dog, person);
       }
 
       requestAnimationFrame(detect);
+    }
+
+    function looseLeashLogic(dog, person) {
+      if (!person) {
+        setCue("🐶 Dog detected", "cyan", "");
+        return;
+      }
+
+      const distance = Math.abs(dog[0] - person[0]);
+
+      if (distance > 135) {
+        setCue("🛑 STOP", "red", "Stop");
+      } else {
+        setCue("✅ GOOD", "lime", "Good");
+      }
+    }
+
+    function heelLogic(dog, person) {
+      if (!person) {
+        setCue("🐶 Dog detected", "cyan", "");
+        return;
+      }
+
+      const distance = Math.abs(dog[0] - person[0]);
+
+      if (distance < 95) {
+        setCue("✅ HEEL", "lime", "Good");
+      } else {
+        setCue("🛑 RESET", "red", "Reset");
+      }
+    }
+
+    let lastDogX = null;
+    let stillFrames = 0;
+
+    function stayLogic(dog) {
+      const dogX = dog[0];
+
+      if (lastDogX === null) {
+        lastDogX = dogX;
+        setCue("⏳ WAIT", "orange", "Wait");
+        return;
+      }
+
+      const movement = Math.abs(dogX - lastDogX);
+
+      if (movement < 8) {
+        stillFrames++;
+      } else {
+        stillFrames = 0;
+      }
+
+      lastDogX = dogX;
+
+      if (stillFrames > 40) {
+        setCue("✅ GOOD STAY", "lime", "Good");
+      } else {
+        setCue("⏳ WAIT", "orange", "Wait");
+      }
+    }
+
+    function focusLogic(dog, person) {
+      if (!person) {
+        setCue("🐶 Dog detected", "cyan", "");
+        return;
+      }
+
+      const distance = Math.abs(dog[0] - person[0]);
+
+      if (distance < 120) {
+        setCue("✅ FOCUS", "lime", "Good");
+      } else {
+        setCue("👀 COME CLOSE", "orange", "Focus");
+      }
     }
 
     init();
