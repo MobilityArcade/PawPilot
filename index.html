@@ -142,10 +142,39 @@
       line-height: 1.5;
       font-size: 15px;
     }
+
+    .badge {
+      display: inline-block;
+      background: #222;
+      border: 1px solid gold;
+      border-radius: 999px;
+      padding: 8px 14px;
+      margin: 6px;
+      font-size: 14px;
+      color: gold;
+    }
+
+    #badgePopup {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: gold;
+      color: black;
+      padding: 16px 22px;
+      border-radius: 16px;
+      font-weight: bold;
+      font-size: 18px;
+      display: none;
+      z-index: 999;
+      box-shadow: 0 0 20px rgba(255,215,0,0.5);
+    }
   </style>
 </head>
 
 <body>
+
+  <div id="badgePopup"></div>
 
   <h1>🐾 PawPilot</h1>
 
@@ -158,6 +187,11 @@
   <div class="dashboard">
 
     <h2>📊 PawPilot Stats</h2>
+
+    <div class="dashboard-item">
+      🔥 Training Streak:
+      <span id="trainingStreak">0 Days</span>
+    </div>
 
     <div class="dashboard-item">
       Total Sessions:
@@ -177,6 +211,11 @@
     <div class="dashboard-item">
       Total Training Time:
       <span id="totalMinutes">0 min</span>
+    </div>
+
+    <div class="dashboard-item">
+      🏆 Achievements:
+      <div id="badgeContainer"></div>
     </div>
 
   </div>
@@ -343,6 +382,9 @@
     const modeHint =
       document.getElementById("modeHint");
 
+    const badgePopup =
+      document.getElementById("badgePopup");
+
     // DASHBOARD
 
     const totalSessionsText =
@@ -356,6 +398,12 @@
 
     const totalMinutesText =
       document.getElementById("totalMinutes");
+
+    const trainingStreakText =
+      document.getElementById("trainingStreak");
+
+    const badgeContainer =
+      document.getElementById("badgeContainer");
 
     // ==========================
     // VARIABLES
@@ -384,7 +432,10 @@
       totalSessions: 0,
       bestConsistency: 0,
       totalMinutes: 0,
-      modeUsage: {}
+      modeUsage: {},
+      streak: 0,
+      lastTrainingDate: null,
+      badges: []
     };
 
     function saveStats() {
@@ -408,6 +459,9 @@
       totalMinutesText.innerText =
         stats.totalMinutes + " min";
 
+      trainingStreakText.innerText =
+        stats.streak + " Days";
+
       let favorite = "None";
       let highest = 0;
 
@@ -422,9 +476,55 @@
 
       favoriteModeText.innerText =
         favorite;
+
+      badgeContainer.innerHTML = "";
+
+      stats.badges.forEach(badge => {
+
+        const badgeEl =
+          document.createElement("div");
+
+        badgeEl.className = "badge";
+
+        badgeEl.innerText = badge;
+
+        badgeContainer.appendChild(badgeEl);
+      });
     }
 
     updateDashboard();
+
+    // ==========================
+    // BADGES
+    // ==========================
+
+    function unlockBadge(name) {
+
+      if (stats.badges.includes(name))
+        return;
+
+      stats.badges.push(name);
+
+      showBadgePopup(name);
+
+      saveStats();
+    }
+
+    function showBadgePopup(name) {
+
+      badgePopup.innerText =
+        "🏆 Badge Unlocked: " + name;
+
+      badgePopup.style.display =
+        "block";
+
+      setTimeout(() => {
+
+        badgePopup.style.display =
+          "none";
+
+      }, 3000);
+    }
 
     // ==========================
     // VOICE
@@ -718,6 +818,61 @@
       speak("Training reset");
     }
 
+    function updateStreak() {
+
+      const today =
+        new Date().toDateString();
+
+      if (!stats.lastTrainingDate) {
+
+        stats.streak = 1;
+
+      } else {
+
+        const last =
+          new Date(stats.lastTrainingDate);
+
+        const current =
+          new Date(today);
+
+        const diff =
+          (current - last) /
+          (1000 * 60 * 60 * 24);
+
+        if (diff === 1) {
+
+          stats.streak++;
+
+        } else if (diff > 1) {
+
+          stats.streak = 1;
+        }
+      }
+
+      stats.lastTrainingDate = today;
+    }
+
+    function checkBadges(consistency, modeName) {
+
+      if (stats.totalSessions >= 1) {
+        unlockBadge("🥉 First Session");
+      }
+
+      if (consistency >= 90) {
+        unlockBadge("🥈 Consistency Master");
+      }
+
+      if (stats.streak >= 7) {
+        unlockBadge("🥇 Training Warrior");
+      }
+
+      if (
+        stats.modeUsage["Sit Training"] >= 10
+      ) {
+        unlockBadge("🐾 Sit Specialist");
+      }
+    }
+
     function showCompletionScreen() {
 
       const modeName =
@@ -759,6 +914,10 @@
 
       stats.modeUsage[modeName]++;
 
+      updateStreak();
+
+      checkBadges(consistency, modeName);
+
       saveStats();
 
       guidedStep.innerText =
@@ -769,7 +928,8 @@
           <strong>Mode:</strong> ${modeName}<br>
           <strong>Rounds Completed:</strong> ${totalRounds}<br>
           <strong>Session Time:</strong> ${getSessionDurationText()}<br>
-          <strong>Consistency:</strong> ${consistency}%
+          <strong>Consistency:</strong> ${consistency}%<br>
+          <strong>🔥 Current Streak:</strong> ${stats.streak} Days
         </div>
 
         <br>
