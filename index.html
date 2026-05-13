@@ -17,41 +17,37 @@
     }
 
     h1 {
-      margin-top: 20px;
-      font-size: 44px;
+      font-size: 42px;
+      margin-bottom: 5px;
     }
 
     .subtitle {
       color: #ccc;
-      margin-bottom: 18px;
       font-size: 18px;
+      margin-bottom: 18px;
     }
 
-    .mode-box {
-      margin: 10px auto 20px;
-    }
-
-    select {
-      padding: 12px 16px;
-      border-radius: 12px;
-      border: none;
-      font-size: 16px;
-      font-weight: bold;
+    select, button {
       background: gold;
       color: black;
+      border: none;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 16px;
+      font-weight: bold;
+      margin: 8px;
     }
 
     .camera-container {
       position: relative;
       width: 100%;
-      max-width: 420px;
-      margin: auto;
+      max-width: 430px;
+      margin: 18px auto;
     }
 
-    video,
-    canvas {
+    video, canvas {
       width: 100%;
-      border-radius: 16px;
+      border-radius: 18px;
       position: absolute;
       top: 0;
       left: 0;
@@ -72,44 +68,54 @@
       left: 12px;
       padding: 12px 16px;
       border-radius: 12px;
-      font-size: 24px;
+      font-size: 26px;
       font-weight: bold;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0,0,0,0.7);
       z-index: 3;
-    }
-
-    button {
-      margin-top: 18px;
-      padding: 14px 22px;
-      border: none;
-      border-radius: 12px;
-      background: gold;
-      color: black;
-      font-weight: bold;
-      font-size: 16px;
-    }
-
-    #status {
-      margin-top: 18px;
-      font-size: 18px;
     }
 
     .pill {
       display: inline-block;
-      margin-top: 12px;
       background: #1e1e1e;
       border: 1px solid #333;
       padding: 9px 14px;
       border-radius: 999px;
-      margin-right: 6px;
-      margin-left: 6px;
+      margin: 6px;
       font-size: 15px;
     }
 
-    #modeHint {
+    #guidedBox {
+      max-width: 430px;
+      margin: 20px auto;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 18px;
+      padding: 22px;
+      display: none;
+    }
+
+    #guidedStep {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+
+    #guidedInstruction {
+      font-size: 20px;
+      line-height: 1.4;
+      color: #ddd;
+      margin-bottom: 18px;
+    }
+
+    #progress {
       color: #aaa;
-      max-width: 420px;
-      margin: 14px auto 0;
+      margin-top: 12px;
+    }
+
+    #modeHint {
+      max-width: 430px;
+      margin: 14px auto;
+      color: #aaa;
       line-height: 1.4;
       font-size: 15px;
     }
@@ -121,34 +127,45 @@
   <h1>🐾 PawPilot</h1>
   <div class="subtitle">Real-Time Dog Training Coach</div>
 
-  <div class="mode-box">
-    <select id="trainingMode" onchange="changeMode()">
-      <option value="looseLeash">Loose Leash Walking</option>
-      <option value="heel">Heel Training</option>
-      <option value="stay">Stay / Wait</option>
-      <option value="focus">Focus</option>
-    </select>
+  <select id="trainingMode" onchange="changeMode()">
+    <option value="looseLeash">Loose Leash Walking</option>
+    <option value="heel">Heel Training</option>
+    <option value="stay">Stay / Wait</option>
+    <option value="focus">Focus</option>
+    <option value="sit">Sit Training</option>
+    <option value="down">Down Training</option>
+    <option value="dropIt">Drop It</option>
+    <option value="leaveIt">Leave It</option>
+  </select>
+
+  <div id="cameraSection">
+    <div class="camera-container">
+      <video id="camera" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div id="coachOverlay">Starting...</div>
+    </div>
+
+    <button onclick="switchCamera()">🔄 Switch Camera</button>
+
+    <div>
+      <span class="pill">Camera: <span id="cameraMode">Back</span></span>
+      <span class="pill">Dog: <span id="dogStatus">NO</span></span>
+      <span class="pill">Person: <span id="personStatus">NO</span></span>
+    </div>
   </div>
 
-  <div class="camera-container">
-    <video id="camera" autoplay playsinline muted></video>
-    <canvas id="overlay"></canvas>
-    <div id="coachOverlay">Starting...</div>
+  <div id="guidedBox">
+    <div id="guidedStep">Step 1</div>
+    <div id="guidedInstruction">Loading...</div>
+
+    <button onclick="markSuccess()">✅ Success</button>
+    <button onclick="markTryAgain()">↩️ Try Again</button>
+    <button onclick="resetGuided()">🔁 Reset</button>
+
+    <div id="progress">Progress: 0 successful reps</div>
   </div>
 
-  <button onclick="switchCamera()">🔄 Switch Camera</button>
-
-  <div id="status">Loading...</div>
-
-  <div>
-    <span class="pill">Camera: <span id="cameraMode">Back</span></span>
-    <span class="pill">Dog: <span id="dogStatus">NO</span></span>
-    <span class="pill">Person: <span id="personStatus">NO</span></span>
-  </div>
-
-  <div id="modeHint">
-    Mode: Loose leash. PawPilot says “Good” when the dog stays close and “Stop” when the dog pulls too far ahead.
-  </div>
+  <div id="modeHint"></div>
 
   <script>
     const video = document.getElementById("camera");
@@ -156,11 +173,16 @@
     const ctx = canvas.getContext("2d");
 
     const coachOverlay = document.getElementById("coachOverlay");
-    const statusText = document.getElementById("status");
     const dogStatus = document.getElementById("dogStatus");
     const personStatus = document.getElementById("personStatus");
     const cameraModeText = document.getElementById("cameraMode");
     const trainingModeSelect = document.getElementById("trainingMode");
+
+    const cameraSection = document.getElementById("cameraSection");
+    const guidedBox = document.getElementById("guidedBox");
+    const guidedStep = document.getElementById("guidedStep");
+    const guidedInstruction = document.getElementById("guidedInstruction");
+    const progressText = document.getElementById("progress");
     const modeHint = document.getElementById("modeHint");
 
     let model;
@@ -171,6 +193,38 @@
     let lastSpoken = "";
     let currentCue = "";
 
+    let guidedIndex = 0;
+    let guidedSuccess = 0;
+
+    const guidedModes = ["sit", "down", "dropIt", "leaveIt"];
+
+    const guidedPlans = {
+      sit: [
+        "Hold a treat close to your dog’s nose.",
+        "Slowly lift the treat upward and slightly back.",
+        "When your dog’s bottom touches the ground, mark it with “Yes.”",
+        "Reward immediately. Repeat 3 times."
+      ],
+      down: [
+        "Ask your dog to sit first.",
+        "Move the treat slowly from the nose down to the floor.",
+        "When elbows lower toward the ground, mark it with “Yes.”",
+        "Reward calmly. Repeat 3 times."
+      ],
+      dropIt: [
+        "Offer your dog a toy.",
+        "Show a better treat near their nose.",
+        "When they release the toy, say “Drop.”",
+        "Reward and give the toy back."
+      ],
+      leaveIt: [
+        "Place a treat in your closed hand.",
+        "Let your dog sniff, but do not open your hand.",
+        "When they stop trying, say “Yes.”",
+        "Reward from your other hand."
+      ]
+    };
+
     document.body.addEventListener("click", () => {
       const unlock = new SpeechSynthesisUtterance("");
       speechSynthesis.speak(unlock);
@@ -179,7 +233,7 @@
     }, { once: true });
 
     function speak(text) {
-      if (!voiceReady) return;
+      if (!voiceReady || !text) return;
       if (text === lastSpoken) return;
 
       lastSpoken = text;
@@ -206,28 +260,28 @@
         currentStream.getTracks().forEach(track => track.stop());
       }
 
-      statusText.innerText = "Starting Camera...";
+      currentStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: currentFacingMode },
+        audio: false
+      });
 
-      try {
-        currentStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: currentFacingMode },
-          audio: false
-        });
+      video.srcObject = currentStream;
 
-        video.srcObject = currentStream;
+      cameraModeText.innerText =
+        currentFacingMode === "environment" ? "Back" : "Front";
 
-        cameraModeText.innerText =
-          currentFacingMode === "environment" ? "Back" : "Front";
+      return new Promise(resolve => {
+        video.onloadedmetadata = () => {
+          video.play();
+          resolve();
+        };
+      });
+    }
 
-        return new Promise(resolve => {
-          video.onloadedmetadata = () => {
-            video.play();
-            resolve();
-          };
-        });
-      } catch (err) {
-        console.error("Camera error:", err);
-        statusText.innerText = "Camera error. Try switching camera.";
+    function stopCamera() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
       }
     }
 
@@ -235,49 +289,115 @@
       currentFacingMode =
         currentFacingMode === "environment" ? "user" : "environment";
 
-      setCue("Switching camera...", "white", "");
       await startCamera();
     }
 
     function changeMode() {
       lastSpoken = "";
       currentCue = "";
+      guidedIndex = 0;
+      guidedSuccess = 0;
 
       const mode = trainingModeSelect.value;
 
-      if (mode === "looseLeash") {
+      if (guidedModes.includes(mode)) {
+        stopCamera();
+        cameraSection.style.display = "none";
+        guidedBox.style.display = "block";
+        loadGuidedStep();
+
         modeHint.innerText =
-          "Mode: Loose leash. PawPilot says “Good” when the dog stays close and “Stop” when the dog pulls too far ahead.";
+          "Guided mode: no camera needed. Follow each step, tap Success when it works, and PawPilot gives the next step.";
+      } else {
+        guidedBox.style.display = "none";
+        cameraSection.style.display = "block";
+        startCamera();
+
+        if (mode === "looseLeash") {
+          modeHint.innerText =
+            "Loose leash mode: PawPilot says GOOD when the dog stays close and STOP when the dog pulls too far ahead.";
+        }
+
+        if (mode === "heel") {
+          modeHint.innerText =
+            "Heel mode: PawPilot rewards closer walking beside the handler.";
+        }
+
+        if (mode === "stay") {
+          modeHint.innerText =
+            "Stay mode: PawPilot watches for stillness and gives GOOD STAY after consistent calm.";
+        }
+
+        if (mode === "focus") {
+          modeHint.innerText =
+            "Focus mode: PawPilot rewards calm closeness and attention.";
+        }
+      }
+    }
+
+    function loadGuidedStep() {
+      const mode = trainingModeSelect.value;
+      const steps = guidedPlans[mode];
+
+      guidedStep.innerText = "Step " + (guidedIndex + 1);
+      guidedInstruction.innerText = steps[guidedIndex];
+      progressText.innerText = "Progress: " + guidedSuccess + " successful reps";
+
+      speak(steps[guidedIndex]);
+    }
+
+    function markSuccess() {
+      guidedSuccess++;
+
+      const mode = trainingModeSelect.value;
+      const steps = guidedPlans[mode];
+
+      if (guidedSuccess >= 3) {
+        guidedSuccess = 0;
+
+        if (guidedIndex < steps.length - 1) {
+          guidedIndex++;
+          speak("Good. Next step.");
+        } else {
+          speak("Great work. Training complete.");
+          guidedInstruction.innerText = "🎉 Training complete. Reset to practice again.";
+          guidedStep.innerText = "Complete";
+          progressText.innerText = "Great session.";
+          return;
+        }
+      } else {
+        speak("Good");
       }
 
-      if (mode === "heel") {
-        modeHint.innerText =
-          "Mode: Heel training. PawPilot says “Good” when the dog stays close to the handler. Use this for walking beside you.";
-      }
+      loadGuidedStep();
+    }
 
-      if (mode === "stay") {
-        modeHint.innerText =
-          "Mode: Stay / Wait. PawPilot watches whether the dog stays mostly still. This is an early MVP version.";
-      }
+    function markTryAgain() {
+      speak("Try again");
+    }
 
-      if (mode === "focus") {
-        modeHint.innerText =
-          "Mode: Focus. PawPilot rewards calm closeness and attention. This is an early MVP version.";
-      }
+    function resetGuided() {
+      guidedIndex = 0;
+      guidedSuccess = 0;
+      loadGuidedStep();
     }
 
     async function init() {
       await startCamera();
-
-      statusText.innerText = "Loading AI Model...";
       model = await cocoSsd.load();
-
-      statusText.innerText = "AI Ready";
+      changeMode();
       detect();
     }
 
     async function detect() {
-      if (!model || video.readyState < 2) {
+      const mode = trainingModeSelect.value;
+
+      if (guidedModes.includes(mode)) {
+        requestAnimationFrame(detect);
+        return;
+      }
+
+      if (!model || !currentStream || video.readyState < 2) {
         requestAnimationFrame(detect);
         return;
       }
@@ -314,10 +434,8 @@
       dogStatus.innerText = dog ? "YES" : "NO";
       personStatus.innerText = person ? "YES" : "NO";
 
-      const mode = trainingModeSelect.value;
-
-      if (!dog) {
-        setCue("👀 Looking for dog", "white", "Find your dog");
+      if (!dog || !person) {
+        setCue("", "white", "");
       } else if (mode === "looseLeash") {
         looseLeashLogic(dog, person);
       } else if (mode === "heel") {
@@ -332,11 +450,6 @@
     }
 
     function looseLeashLogic(dog, person) {
-      if (!person) {
-        setCue("🐶 Dog detected", "cyan", "");
-        return;
-      }
-
       const distance = Math.abs(dog[0] - person[0]);
 
       if (distance > 135) {
@@ -347,11 +460,6 @@
     }
 
     function heelLogic(dog, person) {
-      if (!person) {
-        setCue("🐶 Dog detected", "cyan", "");
-        return;
-      }
-
       const distance = Math.abs(dog[0] - person[0]);
 
       if (distance < 95) {
@@ -391,17 +499,12 @@
     }
 
     function focusLogic(dog, person) {
-      if (!person) {
-        setCue("🐶 Dog detected", "cyan", "");
-        return;
-      }
-
       const distance = Math.abs(dog[0] - person[0]);
 
       if (distance < 120) {
         setCue("✅ FOCUS", "lime", "Good");
       } else {
-        setCue("👀 COME CLOSE", "orange", "Focus");
+        setCue("", "white", "");
       }
     }
 
