@@ -27,7 +27,8 @@
       margin-bottom: 18px;
     }
 
-    select, button {
+    select,
+    button {
       background: gold;
       color: black;
       border: none;
@@ -45,7 +46,8 @@
       margin: 18px auto;
     }
 
-    video, canvas {
+    video,
+    canvas {
       width: 100%;
       border-radius: 18px;
       position: absolute;
@@ -95,14 +97,14 @@
     }
 
     #guidedStep {
-      font-size: 24px;
+      font-size: 28px;
       font-weight: bold;
       margin-bottom: 12px;
     }
 
     #guidedInstruction {
       font-size: 20px;
-      line-height: 1.4;
+      line-height: 1.6;
       color: #ddd;
       margin-bottom: 18px;
     }
@@ -110,13 +112,14 @@
     #progress {
       color: #aaa;
       margin-top: 12px;
+      font-size: 15px;
     }
 
     #modeHint {
       max-width: 430px;
       margin: 14px auto;
       color: #aaa;
-      line-height: 1.4;
+      line-height: 1.5;
       font-size: 15px;
     }
   </style>
@@ -125,28 +128,66 @@
 <body>
 
   <h1>🐾 PawPilot</h1>
-  <div class="subtitle">Real-Time Dog Training Coach</div>
+
+  <div class="subtitle">
+    Real-Time Dog Training Coach
+  </div>
 
   <select id="trainingMode" onchange="changeMode()">
-    <option value="looseLeash">Loose Leash Walking</option>
-    <option value="heel">Heel Training</option>
-    <option value="stay">Stay / Wait</option>
-    <option value="focus">Focus</option>
-    <option value="sit">Sit Training</option>
-    <option value="down">Down Training</option>
-    <option value="dropIt">Drop It</option>
-    <option value="leaveIt">Leave It</option>
+
+    <option value="looseLeash">
+      Loose Leash Walking
+    </option>
+
+    <option value="heel">
+      Heel Training
+    </option>
+
+    <option value="stay">
+      Stay / Wait
+    </option>
+
+    <option value="focus">
+      Focus
+    </option>
+
+    <option value="sit">
+      Sit Training
+    </option>
+
+    <option value="down">
+      Down Training
+    </option>
+
+    <option value="dropIt">
+      Drop It
+    </option>
+
+    <option value="leaveIt">
+      Leave It
+    </option>
+
   </select>
+
+  <!-- CAMERA SECTION -->
 
   <div id="cameraSection">
 
     <div class="camera-container">
-      <video id="camera" autoplay playsinline muted></video>
+
+      <video
+        id="camera"
+        autoplay
+        playsinline
+        muted>
+      </video>
+
       <canvas id="overlay"></canvas>
 
       <div id="coachOverlay">
         Starting...
       </div>
+
     </div>
 
     <button onclick="switchCamera()">
@@ -154,6 +195,7 @@
     </button>
 
     <div>
+
       <span class="pill">
         Camera:
         <span id="cameraMode">Back</span>
@@ -168,9 +210,12 @@
         Person:
         <span id="personStatus">NO</span>
       </span>
+
     </div>
 
   </div>
+
+  <!-- GUIDED TRAINING -->
 
   <div id="guidedBox">
 
@@ -204,11 +249,21 @@
 
   <script>
 
-    const video = document.getElementById("camera");
-    const canvas = document.getElementById("overlay");
-    const ctx = canvas.getContext("2d");
+    // ==========================
+    // ELEMENTS
+    // ==========================
 
-    const coachOverlay = document.getElementById("coachOverlay");
+    const video =
+      document.getElementById("camera");
+
+    const canvas =
+      document.getElementById("overlay");
+
+    const ctx =
+      canvas.getContext("2d");
+
+    const coachOverlay =
+      document.getElementById("coachOverlay");
 
     const dogStatus =
       document.getElementById("dogStatus");
@@ -239,6 +294,10 @@
 
     const modeHint =
       document.getElementById("modeHint");
+
+    // ==========================
+    // VARIABLES
+    // ==========================
 
     let model;
 
@@ -299,7 +358,9 @@
         spokenText &&
         spokenText !== currentCue
       ) {
+
         currentCue = spokenText;
+
         speak(spokenText);
       }
     }
@@ -367,7 +428,7 @@
     }
 
     // ==========================
-    // GUIDED TRAINING SYSTEM
+    // GUIDED TRAINING
     // ==========================
 
     let guidedIndex = 0;
@@ -375,6 +436,12 @@
     let guidedRound = 1;
 
     const totalRounds = 3;
+
+    let successCount = 0;
+
+    let totalAttempts = 0;
+
+    let sessionStartTime = null;
 
     const guidedModes = [
       "sit",
@@ -414,6 +481,38 @@
       ]
     };
 
+    function startSessionTimer() {
+
+      sessionStartTime =
+        Date.now();
+    }
+
+    function getSessionDuration() {
+
+      const elapsed =
+        Math.floor(
+          (Date.now() - sessionStartTime) / 1000
+        );
+
+      const minutes =
+        Math.floor(elapsed / 60);
+
+      const seconds =
+        elapsed % 60;
+
+      return `${minutes}m ${seconds}s`;
+    }
+
+    function getConsistencyScore() {
+
+      if (totalAttempts === 0)
+        return 100;
+
+      return Math.round(
+        (successCount / totalAttempts) * 100
+      );
+    }
+
     function loadGuidedStep() {
 
       const mode =
@@ -442,6 +541,10 @@
 
     function markSuccess() {
 
+      totalAttempts++;
+
+      successCount++;
+
       const mode =
         trainingModeSelect.value;
 
@@ -460,18 +563,7 @@
         // Completed all rounds
         if (guidedRound >= totalRounds) {
 
-          guidedStep.innerText =
-            "Training Complete";
-
-          guidedInstruction.innerText =
-            "🎉 Great work. Your dog completed all 3 rounds.";
-
-          progressText.innerText =
-            "Session Complete";
-
-          speak(
-            "Great work. Training complete."
-          );
+          showCompletionScreen();
 
           return;
         }
@@ -488,6 +580,8 @@
 
     function markTryAgain() {
 
+      totalAttempts++;
+
       speak("Try again");
     }
 
@@ -497,9 +591,46 @@
 
       guidedRound = 1;
 
+      successCount = 0;
+
+      totalAttempts = 0;
+
+      startSessionTimer();
+
       loadGuidedStep();
 
       speak("Training reset");
+    }
+
+    function showCompletionScreen() {
+
+      const modeName =
+        trainingModeSelect.options[
+          trainingModeSelect.selectedIndex
+        ].text;
+
+      guidedStep.innerText =
+        "🎉 SESSION COMPLETE";
+
+      guidedInstruction.innerHTML = `
+        <div style="line-height:1.8;">
+          <strong>Mode:</strong> ${modeName}<br>
+          <strong>Rounds Completed:</strong> ${totalRounds}<br>
+          <strong>Session Time:</strong> ${getSessionDuration()}<br>
+          <strong>Consistency:</strong> ${getConsistencyScore()}%
+        </div>
+
+        <br>
+
+        Great work today.
+      `;
+
+      progressText.innerText =
+        "Training Complete";
+
+      speak(
+        "Great work today. Training complete."
+      );
     }
 
     // ==========================
@@ -516,6 +647,10 @@
 
       guidedRound = 1;
 
+      successCount = 0;
+
+      totalAttempts = 0;
+
       const mode =
         trainingModeSelect.value;
 
@@ -529,10 +664,12 @@
         guidedBox.style.display =
           "block";
 
+        startSessionTimer();
+
         loadGuidedStep();
 
         modeHint.innerText =
-          "Guided mode: no camera needed. Complete all steps, then repeat the full sequence for 3 rounds.";
+          "Guided mode: complete the full sequence for 3 rounds.";
 
       } else {
 
