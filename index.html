@@ -60,7 +60,6 @@
     .dashboard h2,
     .profileBox h2 {
       margin-top: 0;
-      font-size: 24px;
     }
 
     .dashboard-item {
@@ -103,6 +102,7 @@
       font-weight: bold;
       background: rgba(0,0,0,0.7);
       z-index: 3;
+      transition: all 0.2s ease;
     }
 
     .pill {
@@ -144,14 +144,6 @@
       font-size: 15px;
     }
 
-    #modeHint {
-      max-width: 430px;
-      margin: 14px auto;
-      color: #aaa;
-      line-height: 1.5;
-      font-size: 15px;
-    }
-
     .badge {
       display: inline-block;
       background: #222;
@@ -163,734 +155,637 @@
       color: gold;
     }
 
-    #badgePopup {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: gold;
-      color: black;
-      padding: 16px 22px;
-      border-radius: 16px;
-      font-weight: bold;
-      font-size: 18px;
-      display: none;
-      z-index: 999;
-      box-shadow: 0 0 20px rgba(255,215,0,0.5);
-    }
   </style>
 </head>
 
 <body>
 
-  <div id="badgePopup"></div>
+<h1>🐾 PawPilot</h1>
 
-  <h1>🐾 PawPilot</h1>
-  <div class="subtitle">Real-Time Dog Training Coach</div>
+<div class="subtitle">
+  Real-Time Dog Training Coach
+</div>
 
-  <div class="profileBox">
-    <h2>🐶 Dog Profile</h2>
+<div class="profileBox">
 
-    <div>
-      Current Dog:
-      <select id="dogProfileSelect" onchange="switchDogProfile()"></select>
-    </div>
+  <h2>🐶 Dog Profile</h2>
 
-    <div>
-      <input id="newDogName" placeholder="Dog name" />
-      <button onclick="addDogProfile()">Add Dog</button>
-    </div>
+  <div>
+    Current Dog:
+    <select id="dogProfileSelect" onchange="switchDogProfile()"></select>
   </div>
 
-  <div class="dashboard">
-    <h2>📊 <span id="dashboardDogName">Dog</span>’s Stats</h2>
-
-    <div class="dashboard-item">
-      🔥 Training Streak:
-      <span id="trainingStreak">0 Days</span>
-    </div>
-
-    <div class="dashboard-item">
-      Total Sessions:
-      <span id="totalSessions">0</span>
-    </div>
-
-    <div class="dashboard-item">
-      Best Consistency:
-      <span id="bestConsistency">0%</span>
-    </div>
-
-    <div class="dashboard-item">
-      Favorite Mode:
-      <span id="favoriteMode">None</span>
-    </div>
-
-    <div class="dashboard-item">
-      Total Training Time:
-      <span id="totalMinutes">0 min</span>
-    </div>
-
-    <div class="dashboard-item">
-      🏆 Achievements:
-      <div id="badgeContainer"></div>
-    </div>
+  <div>
+    <input id="newDogName" placeholder="Dog name">
+    <button onclick="addDogProfile()">Add Dog</button>
   </div>
 
-  <select id="trainingMode" onchange="changeMode()">
-    <option value="looseLeash">Loose Leash Walking</option>
-    <option value="heel">Heel Training</option>
-    <option value="stay">Stay / Wait</option>
-    <option value="focus">Focus</option>
-    <option value="sit">Sit Training</option>
-    <option value="down">Down Training</option>
-    <option value="dropIt">Drop It</option>
-    <option value="leaveIt">Leave It</option>
-  </select>
+</div>
 
-  <div id="cameraSection">
-    <div class="camera-container">
-      <video id="camera" autoplay playsinline muted></video>
-      <canvas id="overlay"></canvas>
-      <div id="coachOverlay">Starting...</div>
-    </div>
+<div class="dashboard">
 
-    <button onclick="switchCamera()">🔄 Switch Camera</button>
+  <h2>
+    📊 <span id="dashboardDogName">Dog</span>'s Stats
+  </h2>
 
-    <div>
-      <span class="pill">Camera: <span id="cameraMode">Back</span></span>
-      <span class="pill">Dog: <span id="dogStatus">NO</span></span>
-      <span class="pill">Person: <span id="personStatus">NO</span></span>
-    </div>
+  <div class="dashboard-item">
+    🔥 Streak:
+    <span id="trainingStreak">0 Days</span>
   </div>
 
-  <div id="guidedBox">
-    <div id="guidedStep">Step 1</div>
-    <div id="guidedInstruction">Loading...</div>
-
-    <button onclick="markSuccess()">✅ Success</button>
-    <button onclick="markTryAgain()">↩️ Try Again</button>
-    <button onclick="resetGuided()">🔁 Reset</button>
-
-    <div id="progress">Progress</div>
+  <div class="dashboard-item">
+    Sessions:
+    <span id="totalSessions">0</span>
   </div>
 
-  <div id="modeHint"></div>
+  <div class="dashboard-item">
+    Best Consistency:
+    <span id="bestConsistency">0%</span>
+  </div>
 
-  <script>
-    const video = document.getElementById("camera");
-    const canvas = document.getElementById("overlay");
-    const ctx = canvas.getContext("2d");
+  <div class="dashboard-item">
+    Favorite Mode:
+    <span id="favoriteMode">None</span>
+  </div>
 
-    const coachOverlay = document.getElementById("coachOverlay");
-    const dogStatus = document.getElementById("dogStatus");
-    const personStatus = document.getElementById("personStatus");
-    const cameraModeText = document.getElementById("cameraMode");
-    const trainingModeSelect = document.getElementById("trainingMode");
+  <div class="dashboard-item">
+    Training Time:
+    <span id="totalMinutes">0 min</span>
+  </div>
 
-    const cameraSection = document.getElementById("cameraSection");
-    const guidedBox = document.getElementById("guidedBox");
-    const guidedStep = document.getElementById("guidedStep");
-    const guidedInstruction = document.getElementById("guidedInstruction");
-    const progressText = document.getElementById("progress");
-    const modeHint = document.getElementById("modeHint");
+  <div class="dashboard-item">
+    🏆 Badges:
+    <div id="badgeContainer"></div>
+  </div>
 
-    const dogProfileSelect = document.getElementById("dogProfileSelect");
-    const newDogNameInput = document.getElementById("newDogName");
-    const dashboardDogName = document.getElementById("dashboardDogName");
+</div>
 
-    const totalSessionsText = document.getElementById("totalSessions");
-    const bestConsistencyText = document.getElementById("bestConsistency");
-    const favoriteModeText = document.getElementById("favoriteMode");
-    const totalMinutesText = document.getElementById("totalMinutes");
-    const trainingStreakText = document.getElementById("trainingStreak");
-    const badgeContainer = document.getElementById("badgeContainer");
-    const badgePopup = document.getElementById("badgePopup");
+<select id="trainingMode" onchange="changeMode()">
+  <option value="looseLeash">Loose Leash Walking</option>
+  <option value="heel">Heel Training</option>
+  <option value="stay">Stay / Wait</option>
+  <option value="focus">Focus</option>
+  <option value="sit">Sit Training</option>
+  <option value="down">Down Training</option>
+  <option value="dropIt">Drop It</option>
+  <option value="leaveIt">Leave It</option>
+</select>
 
-    let model;
-    let currentStream = null;
-    let currentFacingMode = "environment";
+<div id="cameraSection">
 
-    let voiceReady = false;
-    let lastSpoken = "";
-    let currentCue = "";
+  <div class="camera-container">
 
-    let profiles = JSON.parse(localStorage.getItem("pawpilotProfiles")) || {};
-    let currentDogName = localStorage.getItem("pawpilotCurrentDog") || "My Dog";
+    <video id="camera" autoplay playsinline muted></video>
 
-    function createEmptyStats() {
-      return {
-        totalSessions: 0,
-        bestConsistency: 0,
-        totalMinutes: 0,
-        modeUsage: {},
-        streak: 0,
-        lastTrainingDate: null,
-        badges: []
-      };
+    <canvas id="overlay"></canvas>
+
+    <div id="coachOverlay">
+      Starting...
+    </div>
+
+  </div>
+
+  <button onclick="switchCamera()">
+    🔄 Switch Camera
+  </button>
+
+  <div>
+    <span class="pill">
+      Camera:
+      <span id="cameraMode">Back</span>
+    </span>
+
+    <span class="pill">
+      Dog:
+      <span id="dogStatus">NO</span>
+    </span>
+
+    <span class="pill">
+      Person:
+      <span id="personStatus">NO</span>
+    </span>
+  </div>
+
+</div>
+
+<script>
+
+const video = document.getElementById("camera");
+const canvas = document.getElementById("overlay");
+const ctx = canvas.getContext("2d");
+
+const coachOverlay =
+  document.getElementById("coachOverlay");
+
+const dogStatus =
+  document.getElementById("dogStatus");
+
+const personStatus =
+  document.getElementById("personStatus");
+
+const cameraModeText =
+  document.getElementById("cameraMode");
+
+const trainingModeSelect =
+  document.getElementById("trainingMode");
+
+const dogProfileSelect =
+  document.getElementById("dogProfileSelect");
+
+const newDogNameInput =
+  document.getElementById("newDogName");
+
+const dashboardDogName =
+  document.getElementById("dashboardDogName");
+
+const totalSessionsText =
+  document.getElementById("totalSessions");
+
+const bestConsistencyText =
+  document.getElementById("bestConsistency");
+
+const favoriteModeText =
+  document.getElementById("favoriteMode");
+
+const totalMinutesText =
+  document.getElementById("totalMinutes");
+
+const trainingStreakText =
+  document.getElementById("trainingStreak");
+
+const badgeContainer =
+  document.getElementById("badgeContainer");
+
+let model;
+
+let currentStream = null;
+
+let currentFacingMode = "environment";
+
+let voiceReady = false;
+
+let lastSpoken = "";
+
+let currentCue = "";
+
+// ==========================
+// SMOOTHING SYSTEM
+// ==========================
+
+let cueStartTime = 0;
+let pendingCue = "";
+
+let activeCue = "";
+
+const STOP_DELAY = 500;
+const GOOD_DELAY = 700;
+
+// ==========================
+// PROFILES
+// ==========================
+
+let profiles = JSON.parse(
+  localStorage.getItem("pawpilotProfiles")
+) || {};
+
+let currentDogName =
+  localStorage.getItem("pawpilotCurrentDog")
+  || "My Dog";
+
+function createEmptyStats() {
+
+  return {
+    totalSessions: 0,
+    bestConsistency: 0,
+    totalMinutes: 0,
+    modeUsage: {},
+    streak: 0,
+    badges: []
+  };
+}
+
+if (!profiles[currentDogName]) {
+  profiles[currentDogName] =
+    createEmptyStats();
+}
+
+function getStats() {
+  return profiles[currentDogName];
+}
+
+function saveProfiles() {
+
+  localStorage.setItem(
+    "pawpilotProfiles",
+    JSON.stringify(profiles)
+  );
+
+  localStorage.setItem(
+    "pawpilotCurrentDog",
+    currentDogName
+  );
+
+  updateProfileSelector();
+
+  updateDashboard();
+}
+
+function updateProfileSelector() {
+
+  dogProfileSelect.innerHTML = "";
+
+  Object.keys(profiles).forEach(name => {
+
+    const option =
+      document.createElement("option");
+
+    option.value = name;
+    option.innerText = name;
+
+    if (name === currentDogName) {
+      option.selected = true;
     }
 
-    if (!profiles[currentDogName]) {
-      profiles[currentDogName] = createEmptyStats();
+    dogProfileSelect.appendChild(option);
+  });
+}
+
+function addDogProfile() {
+
+  const name =
+    newDogNameInput.value.trim();
+
+  if (!name) return;
+
+  if (!profiles[name]) {
+    profiles[name] = createEmptyStats();
+  }
+
+  currentDogName = name;
+
+  newDogNameInput.value = "";
+
+  saveProfiles();
+}
+
+function switchDogProfile() {
+
+  currentDogName =
+    dogProfileSelect.value;
+
+  saveProfiles();
+}
+
+function updateDashboard() {
+
+  const stats = getStats();
+
+  dashboardDogName.innerText =
+    currentDogName;
+
+  totalSessionsText.innerText =
+    stats.totalSessions;
+
+  bestConsistencyText.innerText =
+    stats.bestConsistency + "%";
+
+  totalMinutesText.innerText =
+    stats.totalMinutes + " min";
+
+  trainingStreakText.innerText =
+    stats.streak + " Days";
+
+  let favorite = "None";
+  let highest = 0;
+
+  for (const mode in stats.modeUsage) {
+
+    if (stats.modeUsage[mode] > highest) {
+
+      highest = stats.modeUsage[mode];
+
+      favorite = mode;
     }
+  }
 
-    function getStats() {
-      return profiles[currentDogName];
-    }
+  favoriteModeText.innerText =
+    favorite;
 
-    function saveProfiles() {
-      localStorage.setItem("pawpilotProfiles", JSON.stringify(profiles));
-      localStorage.setItem("pawpilotCurrentDog", currentDogName);
-      updateProfileSelector();
-      updateDashboard();
-    }
+  badgeContainer.innerHTML = "";
 
-    function updateProfileSelector() {
-      dogProfileSelect.innerHTML = "";
+  stats.badges.forEach(badge => {
 
-      Object.keys(profiles).forEach(name => {
-        const option = document.createElement("option");
-        option.value = name;
-        option.innerText = name;
+    const badgeEl =
+      document.createElement("div");
 
-        if (name === currentDogName) {
-          option.selected = true;
-        }
+    badgeEl.className = "badge";
 
-        dogProfileSelect.appendChild(option);
-      });
-    }
+    badgeEl.innerText = badge;
 
-    function addDogProfile() {
-      const name = newDogNameInput.value.trim();
+    badgeContainer.appendChild(badgeEl);
+  });
+}
 
-      if (!name) return;
+updateProfileSelector();
+updateDashboard();
 
-      if (!profiles[name]) {
-        profiles[name] = createEmptyStats();
-      }
+// ==========================
+// VOICE
+// ==========================
 
-      currentDogName = name;
-      newDogNameInput.value = "";
+document.body.addEventListener("click", () => {
 
-      saveProfiles();
-    }
+  const unlock =
+    new SpeechSynthesisUtterance("");
 
-    function switchDogProfile() {
-      currentDogName = dogProfileSelect.value;
-      saveProfiles();
-    }
+  speechSynthesis.speak(unlock);
 
-    function updateDashboard() {
-      const stats = getStats();
+  speechSynthesis.cancel();
 
-      dashboardDogName.innerText = currentDogName;
-      totalSessionsText.innerText = stats.totalSessions;
-      bestConsistencyText.innerText = stats.bestConsistency + "%";
-      totalMinutesText.innerText = stats.totalMinutes + " min";
-      trainingStreakText.innerText = stats.streak + " Days";
+  voiceReady = true;
 
-      let favorite = "None";
-      let highest = 0;
+}, { once: true });
 
-      for (const mode in stats.modeUsage) {
-        if (stats.modeUsage[mode] > highest) {
-          highest = stats.modeUsage[mode];
-          favorite = mode;
-        }
-      }
+function speak(text) {
 
-      favoriteModeText.innerText = favorite;
+  if (!voiceReady || !text) return;
 
-      badgeContainer.innerHTML = "";
+  if (text === lastSpoken) return;
 
-      stats.badges.forEach(badge => {
-        const badgeEl = document.createElement("div");
-        badgeEl.className = "badge";
-        badgeEl.innerText = badge;
-        badgeContainer.appendChild(badgeEl);
-      });
-    }
+  lastSpoken = text;
 
-    updateProfileSelector();
-    updateDashboard();
+  speechSynthesis.cancel();
 
-    function unlockBadge(name) {
-      const stats = getStats();
+  const utter =
+    new SpeechSynthesisUtterance(text);
 
-      if (stats.badges.includes(name)) return;
+  utter.rate = 1;
 
-      stats.badges.push(name);
-      showBadgePopup(name);
-      saveProfiles();
-    }
+  utter.pitch = 1;
 
-    function showBadgePopup(name) {
-      badgePopup.innerText = "🏆 Badge Unlocked: " + name;
-      badgePopup.style.display = "block";
+  speechSynthesis.speak(utter);
+}
 
-      setTimeout(() => {
-        badgePopup.style.display = "none";
-      }, 3000);
-    }
+// ==========================
+// SMART CUES
+// ==========================
 
-    document.body.addEventListener("click", () => {
-      const unlock = new SpeechSynthesisUtterance("");
-      speechSynthesis.speak(unlock);
-      speechSynthesis.cancel();
-      voiceReady = true;
-    }, { once: true });
+function setCue(
+  text,
+  color,
+  spokenText,
+  type
+) {
 
-    function speak(text) {
-      if (!voiceReady || !text) return;
-      if (text === lastSpoken) return;
+  const now = Date.now();
 
-      lastSpoken = text;
-      speechSynthesis.cancel();
+  if (pendingCue !== type) {
 
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.rate = 1;
-      utter.pitch = 1;
-      speechSynthesis.speak(utter);
-    }
+    pendingCue = type;
 
-    function setCue(text, color, spokenText) {
-      coachOverlay.innerText = text;
-      coachOverlay.style.color = color;
+    cueStartTime = now;
 
-      if (spokenText && spokenText !== currentCue) {
-        currentCue = spokenText;
-        speak(spokenText);
-      }
-    }
+    return;
+  }
 
-    async function startCamera() {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-      }
+  const elapsed =
+    now - cueStartTime;
 
-      currentStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: currentFacingMode },
-        audio: false
-      });
+  const neededDelay =
+    type === "STOP"
+      ? STOP_DELAY
+      : GOOD_DELAY;
 
-      video.srcObject = currentStream;
+  if (elapsed < neededDelay)
+    return;
 
-      cameraModeText.innerText =
-        currentFacingMode === "environment" ? "Back" : "Front";
+  if (activeCue === type)
+    return;
 
-      return new Promise(resolve => {
-        video.onloadedmetadata = () => {
-          video.play();
-          resolve();
-        };
-      });
-    }
+  activeCue = type;
 
-    function stopCamera() {
-      if (currentStream) {
-        currentStream.getTracks().forEach(track => track.stop());
-        currentStream = null;
-      }
-    }
+  coachOverlay.innerText = text;
 
-    async function switchCamera() {
-      currentFacingMode =
-        currentFacingMode === "environment" ? "user" : "environment";
+  coachOverlay.style.color = color;
 
-      await startCamera();
-    }
+  if (
+    spokenText &&
+    spokenText !== currentCue
+  ) {
 
-    let guidedIndex = 0;
-    let guidedRound = 1;
-    const totalRounds = 3;
+    currentCue = spokenText;
 
-    let successCount = 0;
-    let totalAttempts = 0;
-    let sessionStartTime = null;
+    speak(spokenText);
+  }
+}
 
-    const guidedModes = ["sit", "down", "dropIt", "leaveIt"];
+// ==========================
+// CAMERA
+// ==========================
 
-    const guidedPlans = {
-      sit: [
-        "Hold a treat close to your dog’s nose.",
-        "Slowly lift the treat upward and slightly back.",
-        "When your dog’s bottom touches the ground, mark it with Yes.",
-        "Reward immediately."
-      ],
+async function startCamera() {
 
-      down: [
-        "Ask your dog to sit first.",
-        "Move the treat slowly from the nose down to the floor.",
-        "When elbows lower toward the ground, mark it with Yes.",
-        "Reward calmly."
-      ],
+  if (currentStream) {
 
-      dropIt: [
-        "Offer your dog a toy.",
-        "Show a better treat near their nose.",
-        "When they release the toy, say Drop.",
-        "Reward and return the toy."
-      ],
+    currentStream
+      .getTracks()
+      .forEach(track => track.stop());
+  }
 
-      leaveIt: [
-        "Place a treat in your closed hand.",
-        "Wait calmly while your dog investigates.",
-        "When they stop trying, mark with Yes.",
-        "Reward from your other hand."
-      ]
+  currentStream =
+    await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: currentFacingMode
+      },
+      audio: false
+    });
+
+  video.srcObject = currentStream;
+
+  cameraModeText.innerText =
+    currentFacingMode === "environment"
+      ? "Back"
+      : "Front";
+
+  return new Promise(resolve => {
+
+    video.onloadedmetadata = () => {
+
+      video.play();
+
+      resolve();
     };
+  });
+}
 
-    function startSessionTimer() {
-      sessionStartTime = Date.now();
-    }
+async function switchCamera() {
 
-    function getSessionDurationSeconds() {
-      return Math.floor((Date.now() - sessionStartTime) / 1000);
-    }
+  currentFacingMode =
+    currentFacingMode === "environment"
+      ? "user"
+      : "environment";
 
-    function getSessionDurationText() {
-      const elapsed = getSessionDurationSeconds();
-      const minutes = Math.floor(elapsed / 60);
-      const seconds = elapsed % 60;
+  await startCamera();
+}
 
-      return `${minutes}m ${seconds}s`;
-    }
+// ==========================
+// DETECTION
+// ==========================
 
-    function getConsistencyScore() {
-      if (totalAttempts === 0) return 100;
+async function init() {
 
-      return Math.round((successCount / totalAttempts) * 100);
-    }
+  await startCamera();
 
-    function loadGuidedStep() {
-      const mode = trainingModeSelect.value;
-      const steps = guidedPlans[mode];
+  model =
+    await cocoSsd.load();
 
-      guidedStep.innerText =
-        "Round " + guidedRound + " • Step " + (guidedIndex + 1);
+  detect();
+}
 
-      guidedInstruction.innerText = steps[guidedIndex];
+async function detect() {
 
-      progressText.innerText =
-        "Completed Rounds: " + (guidedRound - 1) + " / " + totalRounds;
+  if (
+    !model ||
+    !currentStream ||
+    video.readyState < 2
+  ) {
 
-      speak(steps[guidedIndex]);
-    }
+    requestAnimationFrame(detect);
 
-    function markSuccess() {
-      totalAttempts++;
-      successCount++;
+    return;
+  }
 
-      const mode = trainingModeSelect.value;
-      const steps = guidedPlans[mode];
+  canvas.width =
+    video.videoWidth;
 
-      speak("Good");
+  canvas.height =
+    video.videoHeight;
 
-      guidedIndex++;
+  const predictions =
+    await model.detect(video);
 
-      if (guidedIndex >= steps.length) {
-        guidedIndex = 0;
+  ctx.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
 
-        if (guidedRound >= totalRounds) {
-          showCompletionScreen();
-          return;
-        }
+  let dog = null;
 
-        guidedRound++;
-        speak("Great. Begin next round.");
+  let person = null;
+
+  predictions.forEach(prediction => {
+
+    if (prediction.score > 0.55) {
+
+      const [x, y, w, h] =
+        prediction.bbox;
+
+      if (
+        prediction.class === "dog" ||
+        prediction.class === "person"
+      ) {
+
+        ctx.strokeStyle =
+          prediction.class === "dog"
+            ? "lime"
+            : "#00ffff";
+
+        ctx.lineWidth = 3;
+
+        ctx.strokeRect(
+          x,
+          y,
+          w,
+          h
+        );
+
+        ctx.fillStyle =
+          prediction.class === "dog"
+            ? "lime"
+            : "#00ffff";
+
+        ctx.font =
+          "18px Arial";
+
+        ctx.fillText(
+          prediction.class,
+          x,
+          y > 15 ? y - 8 : 20
+        );
       }
 
-      loadGuidedStep();
-    }
-
-    function markTryAgain() {
-      totalAttempts++;
-      speak("Try again");
-    }
-
-    function resetGuided() {
-      guidedIndex = 0;
-      guidedRound = 1;
-      successCount = 0;
-      totalAttempts = 0;
-
-      startSessionTimer();
-      loadGuidedStep();
-
-      speak("Training reset");
-    }
-
-    function updateStreak() {
-      const stats = getStats();
-      const today = new Date().toDateString();
-
-      if (!stats.lastTrainingDate) {
-        stats.streak = 1;
-      } else {
-        const last = new Date(stats.lastTrainingDate);
-        const current = new Date(today);
-        const diff = (current - last) / (1000 * 60 * 60 * 24);
-
-        if (diff === 1) {
-          stats.streak++;
-        } else if (diff > 1) {
-          stats.streak = 1;
-        }
+      if (
+        prediction.class === "dog"
+      ) {
+        dog = prediction.bbox;
       }
 
-      stats.lastTrainingDate = today;
-    }
-
-    function checkBadges(consistency) {
-      const stats = getStats();
-
-      if (stats.totalSessions >= 1) {
-        unlockBadge("🥉 First Session");
-      }
-
-      if (consistency >= 90) {
-        unlockBadge("🥈 Consistency Master");
-      }
-
-      if (stats.streak >= 7) {
-        unlockBadge("🥇 Training Warrior");
-      }
-
-      if (stats.modeUsage["Sit Training"] >= 10) {
-        unlockBadge("🐾 Sit Specialist");
+      if (
+        prediction.class === "person"
+      ) {
+        person = prediction.bbox;
       }
     }
+  });
 
-    function showCompletionScreen() {
-      const stats = getStats();
+  dogStatus.innerText =
+    dog ? "YES" : "NO";
 
-      const modeName =
-        trainingModeSelect.options[trainingModeSelect.selectedIndex].text;
+  personStatus.innerText =
+    person ? "YES" : "NO";
 
-      const consistency = getConsistencyScore();
+  if (dog && person) {
 
-      const sessionMinutes = Math.max(
-        1,
-        Math.round(getSessionDurationSeconds() / 60)
-      );
+    looseLeashLogic(
+      dog,
+      person
+    );
+  }
 
-      stats.totalSessions++;
-      stats.totalMinutes += sessionMinutes;
+  requestAnimationFrame(detect);
+}
 
-      if (consistency > stats.bestConsistency) {
-        stats.bestConsistency = consistency;
-      }
+// ==========================
+// LOGIC
+// ==========================
 
-      if (!stats.modeUsage[modeName]) {
-        stats.modeUsage[modeName] = 0;
-      }
+function looseLeashLogic(
+  dog,
+  person
+) {
 
-      stats.modeUsage[modeName]++;
+  const distance =
+    Math.abs(
+      dog[0] - person[0]
+    );
 
-      updateStreak();
-      checkBadges(consistency);
-      saveProfiles();
+  if (distance > 135) {
 
-      guidedStep.innerText = "🎉 SESSION COMPLETE";
+    setCue(
+      "🛑 STOP",
+      "red",
+      "Stop",
+      "STOP"
+    );
 
-      guidedInstruction.innerHTML = `
-        <div style="line-height:1.8;">
-          <strong>Dog:</strong> ${currentDogName}<br>
-          <strong>Mode:</strong> ${modeName}<br>
-          <strong>Rounds Completed:</strong> ${totalRounds}<br>
-          <strong>Session Time:</strong> ${getSessionDurationText()}<br>
-          <strong>Consistency:</strong> ${consistency}%<br>
-          <strong>🔥 Current Streak:</strong> ${stats.streak} Days
-        </div>
+  } else {
 
-        <br>
+    setCue(
+      "✅ GOOD",
+      "lime",
+      "Good",
+      "GOOD"
+    );
+  }
+}
 
-        Great work today.
-      `;
+function changeMode() {}
 
-      progressText.innerText = "Training Complete";
+init();
 
-      speak("Great work today. Training complete.");
-    }
-
-    function changeMode() {
-      lastSpoken = "";
-      currentCue = "";
-
-      guidedIndex = 0;
-      guidedRound = 1;
-      successCount = 0;
-      totalAttempts = 0;
-
-      const mode = trainingModeSelect.value;
-
-      if (guidedModes.includes(mode)) {
-        stopCamera();
-
-        cameraSection.style.display = "none";
-        guidedBox.style.display = "block";
-
-        startSessionTimer();
-        loadGuidedStep();
-
-        modeHint.innerText =
-          "Guided mode: complete the full sequence for 3 rounds.";
-      } else {
-        guidedBox.style.display = "none";
-        cameraSection.style.display = "block";
-
-        startCamera();
-
-        if (mode === "looseLeash") {
-          modeHint.innerText =
-            "Loose leash mode: PawPilot says GOOD when the dog stays close and STOP when the leash becomes tight.";
-        }
-
-        if (mode === "heel") {
-          modeHint.innerText =
-            "Heel mode: PawPilot rewards close walking beside the handler.";
-        }
-
-        if (mode === "stay") {
-          modeHint.innerText =
-            "Stay mode: PawPilot watches for stillness and rewards calm waiting.";
-        }
-
-        if (mode === "focus") {
-          modeHint.innerText =
-            "Focus mode: PawPilot rewards calm closeness and attention.";
-        }
-      }
-    }
-
-    async function init() {
-      await startCamera();
-      model = await cocoSsd.load();
-      changeMode();
-      detect();
-    }
-
-    async function detect() {
-      const mode = trainingModeSelect.value;
-
-      if (guidedModes.includes(mode)) {
-        requestAnimationFrame(detect);
-        return;
-      }
-
-      if (!model || !currentStream || video.readyState < 2) {
-        requestAnimationFrame(detect);
-        return;
-      }
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-
-      const predictions = await model.detect(video);
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      let dog = null;
-      let person = null;
-
-      predictions.forEach(prediction => {
-        if (prediction.score > 0.55) {
-          const [x, y, w, h] = prediction.bbox;
-
-          if (prediction.class === "dog" || prediction.class === "person") {
-            ctx.strokeStyle = prediction.class === "dog" ? "lime" : "#00ffff";
-            ctx.lineWidth = 3;
-            ctx.strokeRect(x, y, w, h);
-
-            ctx.fillStyle = prediction.class === "dog" ? "lime" : "#00ffff";
-            ctx.font = "18px Arial";
-            ctx.fillText(prediction.class, x, y > 15 ? y - 8 : 20);
-          }
-
-          if (prediction.class === "dog") dog = prediction.bbox;
-          if (prediction.class === "person") person = prediction.bbox;
-        }
-      });
-
-      dogStatus.innerText = dog ? "YES" : "NO";
-      personStatus.innerText = person ? "YES" : "NO";
-
-      if (!dog || !person) {
-        setCue("", "white", "");
-      } else if (mode === "looseLeash") {
-        looseLeashLogic(dog, person);
-      } else if (mode === "heel") {
-        heelLogic(dog, person);
-      } else if (mode === "stay") {
-        stayLogic(dog);
-      } else if (mode === "focus") {
-        focusLogic(dog, person);
-      }
-
-      requestAnimationFrame(detect);
-    }
-
-    function looseLeashLogic(dog, person) {
-      const distance = Math.abs(dog[0] - person[0]);
-
-      if (distance > 135) {
-        setCue("🛑 STOP", "red", "Stop");
-      } else {
-        setCue("✅ GOOD", "lime", "Good");
-      }
-    }
-
-    function heelLogic(dog, person) {
-      const distance = Math.abs(dog[0] - person[0]);
-
-      if (distance < 95) {
-        setCue("✅ HEEL", "lime", "Good");
-      } else {
-        setCue("🛑 RESET", "red", "Reset");
-      }
-    }
-
-    let lastDogX = null;
-    let stillFrames = 0;
-
-    function stayLogic(dog) {
-      const dogX = dog[0];
-
-      if (lastDogX === null) {
-        lastDogX = dogX;
-        setCue("⏳ WAIT", "orange", "Wait");
-        return;
-      }
-
-      const movement = Math.abs(dogX - lastDogX);
-
-      if (movement < 8) {
-        stillFrames++;
-      } else {
-        stillFrames = 0;
-      }
-
-      lastDogX = dogX;
-
-      if (stillFrames > 40) {
-        setCue("✅ GOOD STAY", "lime", "Good");
-      } else {
-        setCue("⏳ WAIT", "orange", "Wait");
-      }
-    }
-
-    function focusLogic(dog, person) {
-      const distance = Math.abs(dog[0] - person[0]);
-
-      if (distance < 120) {
-        setCue("✅ FOCUS", "lime", "Good");
-      } else {
-        setCue("", "white", "");
-      }
-    }
-
-    init();
-  </script>
+</script>
 
 </body>
 </html>
