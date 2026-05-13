@@ -39,6 +39,26 @@
       margin: 8px;
     }
 
+    .dashboard {
+      max-width: 430px;
+      margin: 0 auto 20px;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 18px;
+      padding: 18px;
+      text-align: left;
+    }
+
+    .dashboard h2 {
+      margin-top: 0;
+      font-size: 24px;
+    }
+
+    .dashboard-item {
+      margin: 10px 0;
+      color: #ddd;
+    }
+
     .camera-container {
       position: relative;
       width: 100%;
@@ -133,6 +153,34 @@
     Real-Time Dog Training Coach
   </div>
 
+  <!-- DASHBOARD -->
+
+  <div class="dashboard">
+
+    <h2>📊 PawPilot Stats</h2>
+
+    <div class="dashboard-item">
+      Total Sessions:
+      <span id="totalSessions">0</span>
+    </div>
+
+    <div class="dashboard-item">
+      Best Consistency:
+      <span id="bestConsistency">0%</span>
+    </div>
+
+    <div class="dashboard-item">
+      Favorite Mode:
+      <span id="favoriteMode">None</span>
+    </div>
+
+    <div class="dashboard-item">
+      Total Training Time:
+      <span id="totalMinutes">0 min</span>
+    </div>
+
+  </div>
+
   <select id="trainingMode" onchange="changeMode()">
 
     <option value="looseLeash">
@@ -169,7 +217,7 @@
 
   </select>
 
-  <!-- CAMERA SECTION -->
+  <!-- CAMERA -->
 
   <div id="cameraSection">
 
@@ -295,6 +343,20 @@
     const modeHint =
       document.getElementById("modeHint");
 
+    // DASHBOARD
+
+    const totalSessionsText =
+      document.getElementById("totalSessions");
+
+    const bestConsistencyText =
+      document.getElementById("bestConsistency");
+
+    const favoriteModeText =
+      document.getElementById("favoriteMode");
+
+    const totalMinutesText =
+      document.getElementById("totalMinutes");
+
     // ==========================
     // VARIABLES
     // ==========================
@@ -311,6 +373,58 @@
     let lastSpoken = "";
 
     let currentCue = "";
+
+    // ==========================
+    // STORAGE
+    // ==========================
+
+    let stats = JSON.parse(
+      localStorage.getItem("pawpilotStats")
+    ) || {
+      totalSessions: 0,
+      bestConsistency: 0,
+      totalMinutes: 0,
+      modeUsage: {}
+    };
+
+    function saveStats() {
+
+      localStorage.setItem(
+        "pawpilotStats",
+        JSON.stringify(stats)
+      );
+
+      updateDashboard();
+    }
+
+    function updateDashboard() {
+
+      totalSessionsText.innerText =
+        stats.totalSessions;
+
+      bestConsistencyText.innerText =
+        stats.bestConsistency + "%";
+
+      totalMinutesText.innerText =
+        stats.totalMinutes + " min";
+
+      let favorite = "None";
+      let highest = 0;
+
+      for (const mode in stats.modeUsage) {
+
+        if (stats.modeUsage[mode] > highest) {
+
+          highest = stats.modeUsage[mode];
+          favorite = mode;
+        }
+      }
+
+      favoriteModeText.innerText =
+        favorite;
+    }
+
+    updateDashboard();
 
     // ==========================
     // VOICE
@@ -477,7 +591,7 @@
         "Place a treat in your closed hand.",
         "Wait calmly while your dog investigates.",
         "When they stop trying, mark with Yes.",
-        "Reward from the other hand."
+        "Reward from your other hand."
       ]
     };
 
@@ -487,12 +601,17 @@
         Date.now();
     }
 
-    function getSessionDuration() {
+    function getSessionDurationSeconds() {
+
+      return Math.floor(
+        (Date.now() - sessionStartTime) / 1000
+      );
+    }
+
+    function getSessionDurationText() {
 
       const elapsed =
-        Math.floor(
-          (Date.now() - sessionStartTime) / 1000
-        );
+        getSessionDurationSeconds();
 
       const minutes =
         Math.floor(elapsed / 60);
@@ -542,7 +661,6 @@
     function markSuccess() {
 
       totalAttempts++;
-
       successCount++;
 
       const mode =
@@ -555,12 +673,10 @@
 
       guidedIndex++;
 
-      // Completed all steps
       if (guidedIndex >= steps.length) {
 
         guidedIndex = 0;
 
-        // Completed all rounds
         if (guidedRound >= totalRounds) {
 
           showCompletionScreen();
@@ -609,6 +725,42 @@
           trainingModeSelect.selectedIndex
         ].text;
 
+      const consistency =
+        getConsistencyScore();
+
+      const sessionMinutes =
+        Math.max(
+          1,
+          Math.round(
+            getSessionDurationSeconds() / 60
+          )
+        );
+
+      // SAVE STATS
+
+      stats.totalSessions++;
+
+      stats.totalMinutes +=
+        sessionMinutes;
+
+      if (
+        consistency >
+        stats.bestConsistency
+      ) {
+        stats.bestConsistency =
+          consistency;
+      }
+
+      if (
+        !stats.modeUsage[modeName]
+      ) {
+        stats.modeUsage[modeName] = 0;
+      }
+
+      stats.modeUsage[modeName]++;
+
+      saveStats();
+
       guidedStep.innerText =
         "🎉 SESSION COMPLETE";
 
@@ -616,8 +768,8 @@
         <div style="line-height:1.8;">
           <strong>Mode:</strong> ${modeName}<br>
           <strong>Rounds Completed:</strong> ${totalRounds}<br>
-          <strong>Session Time:</strong> ${getSessionDuration()}<br>
-          <strong>Consistency:</strong> ${getConsistencyScore()}%
+          <strong>Session Time:</strong> ${getSessionDurationText()}<br>
+          <strong>Consistency:</strong> ${consistency}%
         </div>
 
         <br>
