@@ -47,7 +47,8 @@
 
     .dashboard,
     .profileBox,
-    #guidedBox {
+    #guidedBox,
+    .audioBox {
       max-width: 430px;
       margin: 0 auto 20px;
       background: #111;
@@ -126,20 +127,6 @@
       margin-bottom: 18px;
     }
 
-    #progress {
-      color: #aaa;
-      margin-top: 12px;
-      font-size: 15px;
-    }
-
-    #modeHint {
-      max-width: 430px;
-      margin: 14px auto;
-      color: #aaa;
-      line-height: 1.5;
-      font-size: 15px;
-    }
-
     .badge {
       display: inline-block;
       background: #222;
@@ -150,6 +137,7 @@
       font-size: 14px;
       color: gold;
     }
+
   </style>
 </head>
 
@@ -176,6 +164,34 @@
     <input id="newDogName" placeholder="Dog name">
     <button onclick="addDogProfile()">Add Dog</button>
   </div>
+
+</div>
+
+<!-- AUDIO -->
+
+<div class="audioBox">
+
+  <h2>🔊 Audio Settings</h2>
+
+  <select id="audioMode">
+
+    <option value="voice">
+      Voice
+    </option>
+
+    <option value="tone">
+      Tone
+    </option>
+
+    <option value="hybrid">
+      Hybrid
+    </option>
+
+    <option value="silent">
+      Silent
+    </option>
+
+  </select>
 
 </div>
 
@@ -298,7 +314,7 @@
 
 </div>
 
-<!-- GUIDED TRAINING -->
+<!-- GUIDED -->
 
 <div id="guidedBox">
 
@@ -322,13 +338,9 @@
     🔁 Reset
   </button>
 
-  <div id="progress">
-    Progress
-  </div>
+  <div id="progress"></div>
 
 </div>
-
-<div id="modeHint"></div>
 
 <script>
 
@@ -355,6 +367,24 @@ const cameraModeText =
 
 const trainingModeSelect =
   document.getElementById("trainingMode");
+
+const audioModeSelect =
+  document.getElementById("audioMode");
+
+const cameraSection =
+  document.getElementById("cameraSection");
+
+const guidedBox =
+  document.getElementById("guidedBox");
+
+const guidedStep =
+  document.getElementById("guidedStep");
+
+const guidedInstruction =
+  document.getElementById("guidedInstruction");
+
+const progressText =
+  document.getElementById("progress");
 
 const dogProfileSelect =
   document.getElementById("dogProfileSelect");
@@ -383,47 +413,96 @@ const trainingStreakText =
 const badgeContainer =
   document.getElementById("badgeContainer");
 
-const cameraSection =
-  document.getElementById("cameraSection");
-
-const guidedBox =
-  document.getElementById("guidedBox");
-
-const guidedStep =
-  document.getElementById("guidedStep");
-
-const guidedInstruction =
-  document.getElementById("guidedInstruction");
-
-const progressText =
-  document.getElementById("progress");
-
-const modeHint =
-  document.getElementById("modeHint");
-
 let model;
-
 let currentStream = null;
-
-let currentFacingMode =
-  "environment";
+let currentFacingMode = "environment";
 
 let voiceReady = false;
-
 let lastSpoken = "";
-
 let currentCue = "";
 
+let audioContext = null;
+
 // ==========================
-// SMOOTHING
+// AUDIO SYSTEM
 // ==========================
 
-let cueStartTime = 0;
-let pendingCue = "";
-let activeCue = "";
+function initAudio() {
 
-const STOP_DELAY = 500;
-const GOOD_DELAY = 700;
+  if (!audioContext) {
+
+    audioContext =
+      new (
+        window.AudioContext ||
+        window.webkitAudioContext
+      )();
+  }
+}
+
+function playTone(freq, duration) {
+
+  if (
+    audioModeSelect.value === "silent" ||
+    audioModeSelect.value === "voice"
+  ) return;
+
+  initAudio();
+
+  const osc =
+    audioContext.createOscillator();
+
+  const gain =
+    audioContext.createGain();
+
+  osc.connect(gain);
+
+  gain.connect(audioContext.destination);
+
+  osc.frequency.value = freq;
+
+  osc.type = "sine";
+
+  gain.gain.value = 0.05;
+
+  osc.start();
+
+  osc.stop(
+    audioContext.currentTime +
+    duration
+  );
+}
+
+function successSound() {
+
+  playTone(700, 0.12);
+}
+
+function stopSound() {
+
+  playTone(220, 0.15);
+}
+
+function badgeSound() {
+
+  playTone(900, 0.15);
+
+  setTimeout(() => {
+    playTone(1200, 0.18);
+  }, 100);
+}
+
+function completeSound() {
+
+  playTone(600, 0.15);
+
+  setTimeout(() => {
+    playTone(800, 0.15);
+  }, 120);
+
+  setTimeout(() => {
+    playTone(1000, 0.2);
+  }, 240);
+}
 
 // ==========================
 // VOICE
@@ -440,13 +519,25 @@ document.body.addEventListener("click", () => {
 
   voiceReady = true;
 
+  initAudio();
+
 }, { once: true });
 
 function speak(text) {
 
-  if (!voiceReady || !text) return;
+  const mode =
+    audioModeSelect.value;
 
-  if (text === lastSpoken) return;
+  if (
+    mode === "silent" ||
+    mode === "tone"
+  ) return;
+
+  if (!voiceReady || !text)
+    return;
+
+  if (text === lastSpoken)
+    return;
 
   lastSpoken = text;
 
@@ -456,66 +547,14 @@ function speak(text) {
     new SpeechSynthesisUtterance(text);
 
   utter.rate = 1;
+
   utter.pitch = 1;
 
   speechSynthesis.speak(utter);
 }
 
 // ==========================
-// SMART CUES
-// ==========================
-
-function setCue(
-  text,
-  color,
-  spokenText,
-  type
-) {
-
-  const now = Date.now();
-
-  if (pendingCue !== type) {
-
-    pendingCue = type;
-
-    cueStartTime = now;
-
-    return;
-  }
-
-  const elapsed =
-    now - cueStartTime;
-
-  const neededDelay =
-    type === "STOP"
-      ? STOP_DELAY
-      : GOOD_DELAY;
-
-  if (elapsed < neededDelay)
-    return;
-
-  if (activeCue === type)
-    return;
-
-  activeCue = type;
-
-  coachOverlay.innerText = text;
-
-  coachOverlay.style.color = color;
-
-  if (
-    spokenText &&
-    spokenText !== currentCue
-  ) {
-
-    currentCue = spokenText;
-
-    speak(spokenText);
-  }
-}
-
-// ==========================
-// DOG PROFILES
+// PROFILES
 // ==========================
 
 let profiles = JSON.parse(
@@ -580,7 +619,6 @@ function updateProfileSelector() {
     option.innerText = name;
 
     if (name === currentDogName) {
-
       option.selected = true;
     }
 
@@ -731,8 +769,6 @@ const totalRounds = 3;
 let successCount = 0;
 let totalAttempts = 0;
 
-let sessionStartTime = null;
-
 const guidedModes = [
   "sit",
   "down",
@@ -771,43 +807,6 @@ const guidedPlans = {
   ]
 };
 
-function startSessionTimer() {
-
-  sessionStartTime =
-    Date.now();
-}
-
-function getSessionDurationSeconds() {
-
-  return Math.floor(
-    (Date.now() - sessionStartTime) / 1000
-  );
-}
-
-function getSessionDurationText() {
-
-  const elapsed =
-    getSessionDurationSeconds();
-
-  const minutes =
-    Math.floor(elapsed / 60);
-
-  const seconds =
-    elapsed % 60;
-
-  return `${minutes}m ${seconds}s`;
-}
-
-function getConsistencyScore() {
-
-  if (totalAttempts === 0)
-    return 100;
-
-  return Math.round(
-    (successCount / totalAttempts) * 100
-  );
-}
-
 function loadGuidedStep() {
 
   const mode =
@@ -839,13 +838,15 @@ function markSuccess() {
   totalAttempts++;
   successCount++;
 
+  successSound();
+
+  speak("Good");
+
   const mode =
     trainingModeSelect.value;
 
   const steps =
     guidedPlans[mode];
-
-  speak("Good");
 
   guidedIndex++;
 
@@ -874,18 +875,20 @@ function markTryAgain() {
 
   totalAttempts++;
 
+  stopSound();
+
   speak("Try again");
 }
 
 function resetGuided() {
 
   guidedIndex = 0;
+
   guidedRound = 1;
 
   successCount = 0;
-  totalAttempts = 0;
 
-  startSessionTimer();
+  totalAttempts = 0;
 
   loadGuidedStep();
 
@@ -901,81 +904,17 @@ function unlockBadge(name) {
   ) return;
 
   stats.badges.push(name);
-}
 
-function updateStreak() {
-
-  const stats = getStats();
-
-  stats.streak++;
-}
-
-function checkBadges(consistency) {
-
-  const stats = getStats();
-
-  if (stats.totalSessions >= 1) {
-
-    unlockBadge("🥉 First Session");
-  }
-
-  if (consistency >= 90) {
-
-    unlockBadge("🥈 Consistency Master");
-  }
-
-  if (stats.streak >= 7) {
-
-    unlockBadge("🥇 Training Warrior");
-  }
+  badgeSound();
 }
 
 function showCompletionScreen() {
 
   const stats = getStats();
 
-  const modeName =
-    trainingModeSelect.options[
-      trainingModeSelect.selectedIndex
-    ].text;
-
-  const consistency =
-    getConsistencyScore();
-
-  const sessionMinutes =
-    Math.max(
-      1,
-      Math.round(
-        getSessionDurationSeconds() / 60
-      )
-    );
-
   stats.totalSessions++;
 
-  stats.totalMinutes +=
-    sessionMinutes;
-
-  if (
-    consistency >
-    stats.bestConsistency
-  ) {
-
-    stats.bestConsistency =
-      consistency;
-  }
-
-  if (
-    !stats.modeUsage[modeName]
-  ) {
-
-    stats.modeUsage[modeName] = 0;
-  }
-
-  stats.modeUsage[modeName]++;
-
-  updateStreak();
-
-  checkBadges(consistency);
+  completeSound();
 
   saveProfiles();
 
@@ -983,18 +922,8 @@ function showCompletionScreen() {
     "🎉 SESSION COMPLETE";
 
   guidedInstruction.innerHTML = `
-    <div style="line-height:1.8;">
-      <strong>Dog:</strong> ${currentDogName}<br>
-      <strong>Mode:</strong> ${modeName}<br>
-      <strong>Rounds Completed:</strong> ${totalRounds}<br>
-      <strong>Session Time:</strong> ${getSessionDurationText()}<br>
-      <strong>Consistency:</strong> ${consistency}%<br>
-      <strong>🔥 Current Streak:</strong> ${stats.streak} Days
-    </div>
-
-    <br>
-
-    Great work today.
+    Great work today.<br><br>
+    Dog: ${currentDogName}
   `;
 
   progressText.innerText =
@@ -1006,25 +935,16 @@ function showCompletionScreen() {
 }
 
 // ==========================
-// CHANGE MODES
+// MODES
 // ==========================
 
 function changeMode() {
 
-  lastSpoken = "";
-  currentCue = "";
-
-  activeCue = "";
-  pendingCue = "";
+  const mode =
+    trainingModeSelect.value;
 
   guidedIndex = 0;
   guidedRound = 1;
-
-  successCount = 0;
-  totalAttempts = 0;
-
-  const mode =
-    trainingModeSelect.value;
 
   if (
     guidedModes.includes(mode)
@@ -1036,12 +956,7 @@ function changeMode() {
     guidedBox.style.display =
       "block";
 
-    startSessionTimer();
-
     loadGuidedStep();
-
-    modeHint.innerText =
-      "Guided mode active.";
 
   } else {
 
@@ -1050,9 +965,6 @@ function changeMode() {
 
     cameraSection.style.display =
       "block";
-
-    modeHint.innerText =
-      "Camera mode active.";
   }
 }
 
@@ -1160,14 +1072,12 @@ async function detect() {
       if (
         prediction.class === "dog"
       ) {
-
         dog = prediction.bbox;
       }
 
       if (
         prediction.class === "person"
       ) {
-
         person = prediction.bbox;
       }
     }
@@ -1194,7 +1104,7 @@ async function detect() {
 }
 
 // ==========================
-// CAMERA MODES
+// CAMERA MODE
 // ==========================
 
 function looseLeashLogic(
@@ -1209,21 +1119,27 @@ function looseLeashLogic(
 
   if (distance > 135) {
 
-    setCue(
-      "🛑 STOP",
-      "red",
-      "Stop",
-      "STOP"
-    );
+    coachOverlay.innerText =
+      "🛑 STOP";
+
+    coachOverlay.style.color =
+      "red";
+
+    stopSound();
+
+    speak("Stop");
 
   } else {
 
-    setCue(
-      "✅ GOOD",
-      "lime",
-      "Good",
-      "GOOD"
-    );
+    coachOverlay.innerText =
+      "✅ GOOD";
+
+    coachOverlay.style.color =
+      "lime";
+
+    successSound();
+
+    speak("Good");
   }
 }
 
